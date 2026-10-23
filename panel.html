@@ -1,0 +1,320 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- Kuen: glass popover page. Go sends state with window.render(state); the
+     page posts commands back through window.webkit.messageHandlers.app. -->
+<style>
+  :root {
+    --text: #F5F7FF; --text2: #BBCBE7; --text3: #8EA7CD;
+    --green: #34F09A; --cyan: #24DDF3; --warn: #FFB547; --full: #FF5A5F;
+    --track: rgba(255,255,255,0.12); --line: rgba(255,255,255,0.12);
+    /* --a is the glass opacity from the settings slider, 0.1-1. */
+    --a: 0.45;
+    /* --tint is the colour preset as "r,g,b"; kept light so text stays white. */
+    --tint: 36,36,38;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; overflow: hidden; -webkit-user-select: none; cursor: default; }
+  body { font-family: "PingFang SC", -apple-system, "SF Pro Text", sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+  #wrap { display: inline-flex; align-items: flex-end; gap: 10px; padding: 16px; }
+  #wrap.left { flex-direction: row-reverse; }
+
+  .card { position: relative; border-radius: 16px; }
+  #main {
+    width: 360px; padding: 16px 16px 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,calc(0.10 * var(--a))), rgba(255,255,255,0) 40%), rgba(var(--tint),calc(0.78 * var(--a)));
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.32), inset 0 0.5px 0 rgba(255,255,255,0.45);
+  }
+  #settings {
+    width: 236px; padding: 6px 14px; display: none;
+    background: linear-gradient(180deg, rgba(255,255,255,calc(0.10 * var(--a))), rgba(255,255,255,0) 40%), rgba(var(--tint),calc(0.78 * var(--a)));
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.32), inset 0 0.5px 0 rgba(255,255,255,0.45);
+  }
+  #wrap.open #settings { display: block; }
+
+  /* five-hour ring */
+  .top { display: flex; align-items: center; gap: 24px; padding: 2px 4px 12px; }
+  .ring { position: relative; width: 132px; height: 132px; flex: none; }
+  .ring svg { width: 132px; height: 132px; transform: rotate(-90deg); overflow: visible; }
+  .ring .bg { stroke: rgba(255,255,255,0.14); }
+  .ring .fg { filter: drop-shadow(0 0 5px rgba(52,240,154,0.45)); transition: stroke-dashoffset .5s ease; }
+  .ring .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring .pct { font: 700 34px/1 "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.5px; }
+  .ring .lbl { font-size: 12.5px; color: #C7D7EE; margin-top: 5px; font-weight: 500; }
+  .info { display: flex; flex-direction: column; gap: 9px; }
+  .left-row { font-size: 15px; font-weight: 500; color: #E9EEFF; }
+  .left-row b { font: 700 20px/1 "SF Pro Display", -apple-system, sans-serif; color: var(--green); margin-left: 5px; }
+  .cd { font-size: 14.5px; font-weight: 500; color: #DEE7FF; }
+  .at { font-size: 14.5px; color: #BBC9E8; }
+
+  .sep { height: 1px; background: var(--line); margin: 0 -2px; }
+  .week { padding: 11px 4px 12px; }
+  .week .t { font-size: 12.5px; color: var(--text2); margin-bottom: 8px; }
+  .week .t b { color: #F2F5FF; font-weight: 600; }
+
+  .bar { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #06D4E9, #39B9F3); transition: width .5s ease; }
+  .bar.five i { background: linear-gradient(90deg, #40F496, #2CE88D); }
+  .bar.warn i { background: linear-gradient(90deg, #FFC75A, #FF9F0A); }
+  .bar.full i { background: linear-gradient(90deg, #FF7A6E, #FF3B30); }
+
+  .h { font-size: 14px; color: #A8BCDF; padding: 12px 4px 8px; }
+  .acct {
+    position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px 10px; margin-bottom: 9px; border-radius: 12px;
+    background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.16);
+  }
+  .acct.on { background: rgba(255,255,255,0.12); border: 1px solid rgba(48,231,240,0.5); }
+  .acct.click:hover { border-color: rgba(160,190,235,0.6); }
+  .av { width: 42px; height: 42px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.12); box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.3); }
+  .body { flex: 1; min-width: 0; }
+  .name { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 700; white-space: nowrap; padding-right: 60px; min-height: 22px; }
+  .name .n { overflow: hidden; text-overflow: ellipsis; }
+  .name .s { font-size: 13px; font-weight: 600; color: #C4D5EE; }
+  .acct.on .name .s { color: #34EE8B; }
+  .mail { font-size: 10.5px; color: var(--text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row { display: grid; grid-template-columns: 40px minmax(0,1fr) 34px; column-gap: 10px; align-items: center; margin-top: 6px; font-size: 12.5px; color: #C4D5EE; white-space: nowrap; }
+  .row .bar { height: 9px; }
+  .row span:last-child { text-align: right; color: #EFF5FF; font-variant-numeric: tabular-nums; }
+  .prob { margin-top: 7px; font-size: 12px; color: var(--warn); }
+  .check, .btn { position: absolute; top: 11px; right: 12px; }
+  .check { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+           background: linear-gradient(160deg, #26DFFF, #15B7EE); }
+  .btn { font-size: 13px; font-weight: 500; padding: 5px 13px; border-radius: 8px; color: #fff;
+         background: rgba(255,255,255,0.16); border: 0.5px solid rgba(255,255,255,0.25);
+         box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 5px rgba(0,0,0,0.25); }
+  .btn:hover { background: rgba(255,255,255,0.24); }
+  .btn:active { top: 12px; }
+  .busy .btn, .busy .acct { opacity: .55; pointer-events: none; }
+
+  .pill { display: flex; align-items: center; gap: 11px; padding: 8px 14px; border-radius: 17px; margin-top: 2px;
+          background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.16); font-size: 12.5px; font-weight: 500; color: #F0F3FF; }
+  .pill.status { border-color: rgba(255,181,71,0.55); color: #FFE2B0; margin-bottom: 9px; }
+  .pill.upd { border-color: rgba(48,231,240,0.5); margin-bottom: 9px; cursor: pointer; }
+
+  .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 0 14px; height: 38px; border-radius: 11px;
+          background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.16); }
+  .fb { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; padding: 4px 6px; border-radius: 7px; }
+  .fb:hover, .srow.act:hover { background: rgba(255,255,255,0.08); }
+  .fb.sel { background: rgba(255,255,255,0.08); }
+  .upd-t { text-align: center; font-size: 10.5px; color: var(--text3); margin-top: 8px; }
+
+  .srow { display: flex; align-items: center; justify-content: space-between; min-height: 35px; font-size: 13.5px; font-weight: 500; color: #F4F5FF; padding: 0 4px; margin: 0 -4px; }
+  .srow + .srow, .ssep + .srow { border-top: 1px solid var(--line); }
+  .ssep { height: 8px; }
+  .srow .v { color: #CAD7EF; font-size: 12.5px; display: flex; align-items: center; gap: 5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 9px; }
+  .chip { font-size: 12px; padding: 3px 10px; border-radius: 10px; background: rgba(255,255,255,0.12); border: 0.5px solid rgba(255,255,255,0.2); }
+  .sw { display: flex; gap: 9px; padding: 2px 0 10px; }
+  .sw i { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(255,255,255,0.35); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35); }
+  .sw i.on { outline: 2px solid #fff; outline-offset: 2px; }
+  .slider { padding: 2px 0 10px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); }
+  .slider input { flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.22); outline: none; }
+  .slider input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .chip.on { background: linear-gradient(180deg, #56EE96, #27D971); border-color: transparent; color: #05391F; font-weight: 600; }
+  .tg { width: 32px; height: 19px; border-radius: 10px; flex: none; position: relative; background: rgba(255,255,255,0.18); border: 0.5px solid rgba(255,255,255,0.2); transition: background .2s; }
+  .tg::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: left .2s; }
+  .tg.on { background: linear-gradient(180deg, #56EE96, #27D971); border-color: transparent; }
+  .tg.on::after { left: 15px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="main" class="card"></div>
+  <div id="settings" class="card"></div>
+</div>
+<script>
+const T = {
+  "zh-CN": { five: "五小时额度", accounts: "账号", current: "当前使用", spare: "备用", fiveS: "五小时", weekS: "本周",
+    sw: "切换", settings: "设置", quit: "退出", none: "当前没有登录的 Claude 账号", noAcct: "请打开 Claude 并登录",
+    auto: "自动切换", threshold: "切换阈值", fiveOnly: "仅按五小时额度触发", spend: "优先用快过期的周额度",
+    syncAll: "合并所有账号历史", add: "添加账号…", imp: "立即合并会话", lang: "语言", autostart: "开机启动", folder: "打开数据文件夹",
+    update: "有新版本 {v}，点击下载", unknown: "用量未知", glass: "面板不透明度", clear: "通透", solid: "实", tint: "玻璃颜色", frost: "磨砂程度", light: "轻", heavy: "重",
+    tints: { grey: "灰", blue: "蓝", orange: "橘黄", mint: "薄荷绿", purple: "紫", pink: "粉" } },
+  "en": { five: "5-hour limit", accounts: "Accounts", current: "In use", spare: "Spare", fiveS: "5h", weekS: "Week",
+    sw: "Switch", settings: "Settings", quit: "Quit", none: "No active Claude account", noAcct: "Open Claude and sign in",
+    auto: "Auto-switch", threshold: "Switch at", fiveOnly: "Use 5-hour limit only", spend: "Use up expiring weekly first",
+    syncAll: "Sync history from all accounts", add: "Add account…", imp: "Import chats now", lang: "Language", autostart: "Start at login", folder: "Open data folder",
+    update: "Version {v} is out, click to download", unknown: "usage unknown", glass: "Panel opacity", clear: "Clear", solid: "Solid", tint: "Glass colour", frost: "Frost", light: "Light", heavy: "Heavy",
+    tints: { grey: "Grey", blue: "Blue", orange: "Orange", mint: "Mint", purple: "Purple", pink: "Pink" } }
+};
+let S = null, settingsOpen = false, expand = "", spaceRight = 9999, glass = 0.45, frost = 0.7;
+// Light, low-saturation tints; white text stays readable on every one.
+const TINTS = { grey: "36,36,38", blue: "38,70,130", orange: "140,82,34", mint: "30,104,88", purple: "78,58,132", pink: "136,60,98" };
+const SWATCH = { grey: "#8E8E93", blue: "#5B8DEF", orange: "#F2A65A", mint: "#5FC9A8", purple: "#A58BE0", pink: "#E68AB4" };
+const $ = (id) => document.getElementById(id);
+const send = (m) => window.webkit.messageHandlers.app.postMessage(JSON.stringify(m));
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const clamp = (p) => Math.max(0, Math.min(100, p || 0));
+
+const STAR = `<svg width="26" height="26" viewBox="-12 -12 24 24">${[0,30,60,90,120,150,180,210,240,270,300,330].map((a, i) =>
+  `<line x1="0" y1="0" x2="0" y2="${i % 2 ? -8.5 : -11}" stroke="#F28251" stroke-width="2.6" stroke-linecap="round" transform="rotate(${a + (i % 3) * 4})"/>`).join("")}</svg>`;
+const CHECK = `<svg width="11" height="11" viewBox="0 0 12 12"><path d="M2.5 6.3l2.4 2.4 4.6-5" fill="none" stroke="#075482" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const BOLT = `<svg width="13" height="17" viewBox="0 0 13 17"><path d="M7.6 0L0 9.6h5.2L4.4 17 13 6.8H7.6z" fill="#FFD335"/></svg>`;
+const GEAR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`;
+const POWER = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>`;
+const CHEV = (down) => `<svg width="7" height="12" viewBox="0 0 7 12" style="transform:rotate(${down ? 90 : 0}deg)"><path d="M1 1l5 5-5 5" fill="none" stroke="#CAD7EF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const RING = { ok: ["#6BFFAB", "#24F3AE", "#24DDF3"], warn: ["#FFD36B", "#FFB547", "#FF9F0A"], full: ["#FF8A80", "#FF5A5F", "#FF3B30"], unknown: ["#7C8BA8", "#7C8BA8", "#7C8BA8"] };
+
+function ring(st, t) {
+  const r = 57, c = 2 * Math.PI * r, p = st.pct < 0 ? 0 : clamp(st.pct);
+  const g = RING[st.level] || RING.ok;
+  return `<div class="ring"><svg viewBox="0 0 132 132">
+    <defs><linearGradient id="rg" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${g[0]}"/><stop offset=".5" stop-color="${g[1]}"/><stop offset="1" stop-color="${g[2]}"/></linearGradient></defs>
+    <circle class="bg" cx="66" cy="66" r="${r}" fill="none" stroke-width="12"/>
+    ${p > 0 ? `<circle class="fg" cx="66" cy="66" r="${r}" fill="none" stroke="url(#rg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - p / 100)}"/>` : ""}
+    </svg><div class="mid"><div class="pct">${st.pct < 0 ? "--" : Math.round(st.pct) + "%"}</div><div class="lbl">${t.five}</div></div></div>`;
+}
+
+const barCls = (pct, th, base) => pct >= th ? "full" : pct >= 75 ? "warn" : base;
+
+function account(a, st, t) {
+  const th = st.settings.threshold;
+  const usage = a.problem ? `<div class="prob">${esc(a.problem)}</div>` : !a.known ? `<div class="prob">${t.unknown}</div>` : `
+    <div class="row"><span>${t.fiveS}</span><div class="bar ${barCls(a.five, th, "five")}"><i style="width:${clamp(a.five)}%"></i></div><span>${Math.round(a.five)}%</span></div>
+    <div class="row"><span>${t.weekS}</span><div class="bar ${barCls(a.week, th, "")}"><i style="width:${clamp(a.week)}%"></i></div><span>${Math.round(a.week)}%</span></div>`;
+  const side = a.active ? `<div class="check">${CHECK}</div>` : `<div class="btn" data-switch="${esc(a.uuid)}">${t.sw}</div>`;
+  return `<div class="acct ${a.active ? "on" : "click"}" ${a.active ? "" : `data-switch="${esc(a.uuid)}"`}>
+    <div class="av">${STAR}</div>
+    <div class="body"><div class="name"><span class="n">${esc(a.name)}</span><span class="s">· ${a.active ? t.current : t.spare}</span></div>
+      ${a.email ? `<div class="mail">${esc(a.email)}</div>` : ""}${usage}</div>${side}</div>`;
+}
+
+function renderMain(st, t) {
+  let h = "";
+  if (st.hasActive) {
+    h += `<div class="top">${ring(st, t)}<div class="info">`;
+    const m = /^(\D*?)\s*([\d.]+%)$/.exec(st.left || "");
+    h += m ? `<div class="left-row">${esc(m[1])}<b>${esc(m[2])}</b></div>` : `<div class="left-row">${esc(st.left)}</div>`;
+    if (st.countdown) h += `<div class="cd">${esc(st.countdown)}</div>`;
+    if (st.resetAt) h += `<div class="at">${esc(st.resetAt)}</div>`;
+    h += `</div></div>`;
+    if (st.weekText) {
+      const i = st.weekText.indexOf(" · ");
+      const head = i < 0 ? st.weekText : st.weekText.slice(0, i), tail = i < 0 ? "" : st.weekText.slice(i);
+      h += `<div class="sep"></div><div class="week"><div class="t"><b>${esc(head)}</b>${esc(tail)}</div>
+        <div class="bar ${barCls(st.week, st.settings.threshold, "")}"><i style="width:${clamp(st.week)}%"></i></div></div>`;
+    }
+    h += `<div class="sep"></div>`;
+  } else {
+    h += `<div class="top" style="justify-content:center;padding:18px 0">${ring(st, t)}</div><div class="sep"></div>`;
+  }
+  if (st.accounts && st.accounts.length) {
+    h += `<div class="h">${t.accounts}</div>`;
+    for (const a of st.accounts) h += account(a, st, t);
+  }
+  if (st.status) h += `<div class="pill status">${esc(st.status)}</div>`;
+  if (st.update) h += `<div class="pill upd" data-cmd="update">${esc(t.update.replace("{v}", st.update))}</div>`;
+  if (st.next) h += `<div class="pill" title="${esc(st.nextDetail)}">${BOLT}<span>${esc(st.next)}</span></div>`;
+  h += `<div class="foot"><div class="fb ${settingsOpen ? "sel" : ""}" data-cmd="settings">${GEAR}<span>${t.settings}</span>${CHEV(false)}</div>
+    <div class="fb" data-cmd="quit">${POWER}<span>${t.quit}</span></div></div>`;
+  if (st.updated) h += `<div class="upd-t">${esc(st.updated)}</div>`;
+  $("main").innerHTML = h;
+  $("main").classList.toggle("busy", !!st.busy);
+}
+
+function renderSettings(st, t) {
+  const s = st.settings;
+  const tog = (key, on, label) => `<div class="srow act" data-set="${key}" data-on="${on ? 1 : 0}"><span>${label}</span><div class="tg ${on ? "on" : ""}"></div></div>`;
+  const act = (cmd, label) => `<div class="srow act" data-cmd="${cmd}"><span>${label}</span></div>`;
+  let h = tog("auto", s.auto, t.auto);
+  h += `<div class="srow act" data-expand="threshold"><span>${t.threshold}</span><span class="v">${Math.round(s.threshold)}%${CHEV(expand === "threshold")}</span></div>`;
+  if (expand === "threshold") h += `<div class="chips">${s.thresholds.map((v) => `<div class="chip ${v === s.threshold ? "on" : ""}" data-th="${v}">${v}%</div>`).join("")}</div>`;
+  h += tog("fiveHourOnly", s.fiveHourOnly, t.fiveOnly);
+  h += tog("spendWeekly", s.spendWeekly, t.spend);
+  h += `<div class="ssep"></div>`;
+  h += tog("syncAll", s.syncAll, t.syncAll);
+  h += act("add", t.add) + act("import", t.imp);
+  h += `<div class="ssep"></div>`;
+  h += `<div class="srow act" data-expand="lang"><span>${t.lang}</span><span class="v">${st.lang === "zh-CN" ? "简体中文" : "English"}${CHEV(expand === "lang")}</span></div>`;
+  if (expand === "lang") h += `<div class="chips"><div class="chip ${st.lang === "zh-CN" ? "on" : ""}" data-lang="zh-CN">简体中文</div><div class="chip ${st.lang === "en" ? "on" : ""}" data-lang="en">English</div></div>`;
+  h += `<div class="srow"><span>${t.tint}</span><span class="v">${t.tints[s.tint] || ""}</span></div>
+    <div class="sw">${s.tints.map((n) => `<i class="${n === s.tint ? "on" : ""}" data-tint="${n}" title="${t.tints[n]}" style="background:${SWATCH[n]}"></i>`).join("")}</div>`;
+  h += `<div class="srow"><span>${t.frost}</span><span class="v" id="frv">${s.frost}%</span></div>
+    <div class="slider"><span>${t.light}</span><input id="fr" type="range" min="10" max="100" step="5" value="${s.frost}"><span>${t.heavy}</span></div>`;
+  h += `<div class="srow"><span>${t.glass}</span><span class="v" id="opv">${s.opacity}%</span></div>
+    <div class="slider"><span>${t.clear}</span><input id="op" type="range" min="10" max="100" step="5" value="${s.opacity}"><span>${t.solid}</span></div>`;
+  h += tog("autostart", s.autostart, t.autostart);
+  h += act("folder", t.folder);
+  $("settings").innerHTML = h;
+}
+
+function layout() {
+  const w = $("wrap");
+  const open = settingsOpen && S;
+  // The settings card goes on whichever side of the main card has room.
+  w.classList.toggle("left", open && spaceRight < 360 / 2 + 10 + 236 + 24);
+  w.classList.toggle("open", !!open);
+  requestAnimationFrame(() => {
+    const cards = [...document.querySelectorAll(".card")].filter((c) => c.offsetParent).map((c) => {
+      const r = c.getBoundingClientRect();
+      return { x: r.left, y: r.top, w: r.width, h: r.height, r: 16 };
+    });
+    const m = $("main").getBoundingClientRect();
+    send({ cmd: "layout", w: w.offsetWidth, h: w.offsetHeight, mainX: m.left, mainW: m.width, cards, frost });
+  });
+}
+
+function setGlass(pct) {
+  glass = pct / 100;
+  document.documentElement.style.setProperty("--a", glass);
+}
+
+window.render = (st) => {
+  S = st;
+  setGlass(st.settings.opacity || 45);
+  frost = (st.settings.frost || 70) / 100;
+  document.documentElement.style.setProperty("--tint", TINTS[st.settings.tint] || TINTS.grey);
+  const t = T[st.lang] || T.en;
+  renderMain(st, t);
+  renderSettings(st, t);
+  layout();
+};
+window.opened = (right) => {
+  spaceRight = right;
+  settingsOpen = false; expand = "";
+  if (S) window.render(S);
+};
+
+document.addEventListener("click", (e) => {
+  const el = (sel) => e.target.closest(sel);
+  let x;
+  if ((x = el("[data-switch]"))) return send({ cmd: "switch", uuid: x.dataset.switch });
+  if ((x = el("[data-set]"))) return send({ cmd: "set", key: x.dataset.set, on: x.dataset.on !== "1" });
+  if ((x = el("[data-th]"))) return send({ cmd: "threshold", value: Number(x.dataset.th) });
+  if ((x = el("[data-tint]"))) {
+    document.documentElement.style.setProperty("--tint", TINTS[x.dataset.tint]);
+    return send({ cmd: "tint", key: x.dataset.tint });
+  }
+  if ((x = el("[data-lang]"))) return send({ cmd: "lang", lang: x.dataset.lang });
+  if ((x = el("[data-expand]"))) { expand = expand === x.dataset.expand ? "" : x.dataset.expand; return window.render(S); }
+  if ((x = el("[data-cmd]"))) {
+    if (x.dataset.cmd === "settings") { settingsOpen = !settingsOpen; expand = ""; return window.render(S); }
+    return send({ cmd: x.dataset.cmd });
+  }
+});
+// Dragging previews live; letting go saves it.
+document.addEventListener("input", (e) => {
+  if (e.target.id === "fr") {
+    frost = Number(e.target.value) / 100;
+    $("frv").textContent = e.target.value + "%";
+    return layout();
+  }
+  if (e.target.id !== "op") return;
+  setGlass(Number(e.target.value));
+  $("opv").textContent = e.target.value + "%";
+  layout();
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id === "op") send({ cmd: "opacity", value: Number(e.target.value) });
+  if (e.target.id === "fr") send({ cmd: "frost", value: Number(e.target.value) });
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") send({ cmd: "close" }); });
+send({ cmd: "ready" });
+</script>
+</body>
+</html>

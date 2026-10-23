@@ -1,0 +1,11 @@
+Relay for Claude（额度接力）
+Copyright 2026 酷恩
+
+Portions of this software are based on Claude Account Switcher,
+Copyright 2026 SnlperStripes, licensed under the Apache License 2.0.
+
+third_party/systray is a modified copy of fyne.io/systray, distributed
+under its own license in third_party/systray/LICENSE.
+
+Relay for Claude is an independent project. It is not made, endorsed
+or supported by Anthropic. "Claude" is a trademark of Anthropic.

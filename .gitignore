@@ -1,0 +1,5 @@
+*.exe
+/relay-for-claude
+/dist/
+__pycache__/
+/_rollback/
