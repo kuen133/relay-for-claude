@@ -49,6 +49,10 @@ type profile struct {
 	Organization struct {
 		UUID string `json:"uuid"`
 		Type string `json:"organization_type"`
+		// SubSince is when the current subscription started; BillingType
+		// says who bills it, e.g. "apple_subscription" or "stripe_subscription".
+		SubSince    string `json:"subscription_created_at"`
+		BillingType string `json:"billing_type"`
 	} `json:"organization"`
 }
 

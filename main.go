@@ -139,7 +139,11 @@ func printStatus(s *switcher) {
 		if a.UUID == snap.Active {
 			mark = "*"
 		}
-		fmt.Printf("%s %s  %s\n", mark, a.label(), usageText(a, snap.Threshold, time.Now()))
+		line := usageText(a, snap.Threshold, time.Now())
+		if exp := expiryText(false, &a, time.Now()); exp != "" {
+			line += " · " + exp
+		}
+		fmt.Printf("%s %s  %s\n", mark, a.label(), line)
 	}
 }
 

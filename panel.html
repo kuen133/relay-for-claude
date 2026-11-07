@@ -55,6 +55,26 @@
   .week .t { font-size: 12.5px; color: var(--text2); margin-bottom: 8px; }
   .week .t b { color: #F2F5FF; font-weight: 600; }
 
+  /* weekly limit of all subscribed accounts as one stacked bar, one colour per account */
+  .total { padding: 13px 4px 13px; }
+  .total .tt { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .total .tl { font-size: 13px; font-weight: 600; color: #F2F5FF; letter-spacing: .3px; }
+  .total .tp { font: 700 24px/1 "SF Pro Display", -apple-system, sans-serif; color: #F4F8FF; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+  .total .tp small { font-size: 13px; font-weight: 600; opacity: .7; margin-left: 1px; }
+  .total.warn .tp { color: #FFC75A; } .total.full .tp { color: #FF7A6E; }
+  .stack { position: relative; display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--track);
+           box-shadow: inset 0 1px 2px rgba(0,0,0,0.25); }
+  .stack i { height: 100%; flex: none; transition: width .5s ease; }
+  .stack i + i { box-shadow: inset 1.5px 0 0 rgba(18,20,30,0.55); }
+  .stack::after { content: ""; position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
+                  background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 55%); }
+  .lg { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 9px; font-size: 10.5px; color: var(--text3); }
+  .lg span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .lg i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .lg b { font-weight: 600; color: #D5E0F5; }
+  .total .tf { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; margin-top: 7px; font-size: 11.5px; color: var(--text2); }
+  .total .tf span:last-child { color: var(--text3); }
+
   .bar { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
   .bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #06D4E9, #39B9F3); transition: width .5s ease; }
   .bar.five i { background: linear-gradient(90deg, #40F496, #2CE88D); }
@@ -63,31 +83,62 @@
 
   .h { font-size: 14px; color: #A8BCDF; padding: 12px 4px 8px; }
   .acct {
-    position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px 10px; margin-bottom: 9px; border-radius: 12px;
-    background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.16);
+    position: relative; padding: 11px 11px 10px; margin-bottom: 9px; border-radius: 14px;
+    background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.14);
+    transition: border-color .2s, background .2s;
   }
-  .acct.on { background: rgba(255,255,255,0.12); border: 1px solid rgba(48,231,240,0.5); }
-  .acct.click:hover { border-color: rgba(160,190,235,0.6); }
-  .av { width: 42px; height: 42px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
-        background: rgba(255,255,255,0.12); box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.3); }
-  .body { flex: 1; min-width: 0; }
-  .name { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 700; white-space: nowrap; padding-right: 60px; min-height: 22px; }
+  .acct.on { background: rgba(255,255,255,0.10); border: 1px solid rgba(48,231,240,0.45);
+             box-shadow: 0 0 0 3px rgba(36,221,243,0.06), inset 0 0.5px 0 rgba(255,255,255,0.18); }
+  .acct.click:hover { border-color: rgba(160,190,235,0.55); background: rgba(255,255,255,0.08); }
+
+  /* who: avatar, name, mail, switch button */
+  .who { display: flex; align-items: center; gap: 10px; padding-right: 64px; min-height: 34px; }
+  .av { width: 34px; height: 34px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.10); box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.3); }
+  .av svg { width: 21px; height: 21px; }
+  .id { min-width: 0; }
+  .name { display: flex; align-items: baseline; gap: 6px; font-size: 14.5px; font-weight: 700; white-space: nowrap; letter-spacing: .1px; }
   .name .n { overflow: hidden; text-overflow: ellipsis; }
-  .name .s { font-size: 13px; font-weight: 600; color: #C4D5EE; }
-  .acct.on .name .s { color: #34EE8B; }
+  .tag { font-size: 10.5px; font-weight: 600; padding: 1.5px 7px; border-radius: 8px; color: #C4D5EE; background: rgba(255,255,255,0.09); }
+  .acct.on .tag { color: #062E1A; background: linear-gradient(180deg, #5DF3A2, #2EDD7E); }
   .mail { font-size: 10.5px; color: var(--text3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row { display: grid; grid-template-columns: 40px minmax(0,1fr) 34px; column-gap: 10px; align-items: center; margin-top: 6px; font-size: 12.5px; color: #C4D5EE; white-space: nowrap; }
-  .row .bar { height: 9px; }
-  .row span:last-child { text-align: right; color: #EFF5FF; font-variant-numeric: tabular-nums; }
-  .prob { margin-top: 7px; font-size: 12px; color: var(--warn); }
-  .check, .btn { position: absolute; top: 11px; right: 12px; }
-  .check { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-           background: linear-gradient(160deg, #26DFFF, #15B7EE); }
-  .btn { font-size: 13px; font-weight: 500; padding: 5px 13px; border-radius: 8px; color: #fff;
-         background: rgba(255,255,255,0.16); border: 0.5px solid rgba(255,255,255,0.25);
+
+  /* two separate limits, side by side */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+  .tile { padding: 8px 10px 8px; border-radius: 10px; background: rgba(0,0,0,0.12); border: 0.5px solid rgba(255,255,255,0.08); min-width: 0; }
+  .tile .hd { display: flex; justify-content: space-between; align-items: baseline; }
+  .tile .k { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .3px; }
+  .tile .p { font: 700 17px/1 "SF Pro Display", -apple-system, sans-serif; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; color: #F2F6FF; }
+  .tile .p small { font-size: 11px; font-weight: 600; margin-left: 1px; opacity: .75; }
+  .tile.five .p { color: #6BF7B0; }
+  .tile.wk .p { color: #5FE3F6; }
+  .tile.warn .p { color: #FFC75A; }
+  .tile.full .p { color: #FF7A6E; }
+  .tile .bar { height: 5px; border-radius: 3px; margin: 7px 0 7px; }
+  .tile .bar i { border-radius: 3px; }
+  .tile .at { font-size: 11.5px; font-weight: 500; color: #E3EBFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .tile .in { font-size: 10.5px; color: var(--text3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .tile.idle .at { color: var(--text3); font-weight: 400; }
+
+  /* subscription end, its own strip */
+  .exp { display: flex; align-items: center; gap: 7px; margin-top: 7px; padding: 6px 10px; border-radius: 9px;
+         background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.07); font-size: 11.5px; color: #D5E0F5; white-space: nowrap; }
+  .exp svg { flex: none; opacity: .8; }
+  .exp .d { font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+  .exp .est { font-size: 9.5px; padding: 1px 5px; border-radius: 6px; color: var(--text3); border: 0.5px solid rgba(255,255,255,0.18); flex: none; }
+  .exp .l { margin-left: auto; font-weight: 600; color: #EAF1FF; font-variant-numeric: tabular-nums; flex: none; }
+  .exp.warn { border-color: rgba(255,181,71,0.35); } .exp.warn .l { color: #FFC75A; }
+  .exp.full { border-color: rgba(255,90,95,0.45); } .exp.full .l { color: #FF7A6E; }
+
+  .prob { margin-top: 9px; font-size: 12px; color: var(--warn); padding: 7px 10px; border-radius: 9px; background: rgba(255,181,71,0.08); }
+  .check, .btn { position: absolute; top: 14px; right: 12px; }
+  .check { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+           background: linear-gradient(160deg, #26DFFF, #15B7EE); box-shadow: 0 0 10px rgba(36,221,243,0.35); }
+  .btn { font-size: 12.5px; font-weight: 600; padding: 5px 13px; border-radius: 8px; color: #fff;
+         background: rgba(255,255,255,0.14); border: 0.5px solid rgba(255,255,255,0.25);
          box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 5px rgba(0,0,0,0.25); }
   .btn:hover { background: rgba(255,255,255,0.24); }
-  .btn:active { top: 12px; }
+  .btn:active { top: 15px; }
   .busy .btn, .busy .acct { opacity: .55; pointer-events: none; }
 
   .pill { display: flex; align-items: center; gap: 11px; padding: 8px 14px; border-radius: 17px; margin-top: 2px;
@@ -128,13 +179,13 @@
 </div>
 <script>
 const T = {
-  "zh-CN": { five: "五小时额度", accounts: "账号", current: "当前使用", spare: "备用", fiveS: "五小时", weekS: "本周",
+  "zh-CN": { five: "五小时额度", accounts: "账号", current: "当前使用", spare: "备用", fiveS: "五小时", weekS: "本周", est: "预计", weekTotal: "本周总额度",
     sw: "切换", settings: "设置", quit: "退出", none: "当前没有登录的 Claude 账号", noAcct: "请打开 Claude 并登录",
     auto: "自动切换", threshold: "切换阈值", fiveOnly: "仅按五小时额度触发", spend: "优先用快过期的周额度",
     syncAll: "合并所有账号历史", add: "添加账号…", imp: "立即合并会话", lang: "语言", autostart: "开机启动", folder: "打开数据文件夹",
     update: "有新版本 {v}，点击下载", unknown: "用量未知", glass: "面板不透明度", clear: "通透", solid: "实", tint: "玻璃颜色", frost: "磨砂程度", light: "轻", heavy: "重",
     tints: { grey: "灰", blue: "蓝", orange: "橘黄", mint: "薄荷绿", purple: "紫", pink: "粉" } },
-  "en": { five: "5-hour limit", accounts: "Accounts", current: "In use", spare: "Spare", fiveS: "5h", weekS: "Week",
+  "en": { five: "5-hour limit", accounts: "Accounts", current: "In use", spare: "Spare", fiveS: "5-hour", weekS: "Weekly", est: "est.", weekTotal: "Weekly total",
     sw: "Switch", settings: "Settings", quit: "Quit", none: "No active Claude account", noAcct: "Open Claude and sign in",
     auto: "Auto-switch", threshold: "Switch at", fiveOnly: "Use 5-hour limit only", spend: "Use up expiring weekly first",
     syncAll: "Sync history from all accounts", add: "Add account…", imp: "Import chats now", lang: "Language", autostart: "Start at login", folder: "Open data folder",
@@ -171,17 +222,52 @@ function ring(st, t) {
 }
 
 const barCls = (pct, th, base) => pct >= th ? "full" : pct >= 75 ? "warn" : base;
+const CAL = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#C4D5EE" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="12" height="11" rx="2.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>`;
 
-function account(a, st, t) {
+// tile is one limit: its name, percent, bar, reset time and countdown.
+function tile(label, pct, at, left, cls) {
+  return `<div class="tile ${cls}${left ? "" : " idle"}">
+    <div class="hd"><span class="k">${label}</span><span class="p">${Math.round(pct)}<small>%</small></span></div>
+    <div class="bar ${cls}"><i style="width:${clamp(pct)}%"></i></div>
+    <div class="at">${esc(at)}</div>${left ? `<div class="in">${esc(left)}</div>` : ""}</div>`;
+}
+
+function account(a, st, t, i) {
   const th = st.settings.threshold;
-  const usage = a.problem ? `<div class="prob">${esc(a.problem)}</div>` : !a.known ? `<div class="prob">${t.unknown}</div>` : `
-    <div class="row"><span>${t.fiveS}</span><div class="bar ${barCls(a.five, th, "five")}"><i style="width:${clamp(a.five)}%"></i></div><span>${Math.round(a.five)}%</span></div>
-    <div class="row"><span>${t.weekS}</span><div class="bar ${barCls(a.week, th, "")}"><i style="width:${clamp(a.week)}%"></i></div><span>${Math.round(a.week)}%</span></div>`;
+  const usage = a.problem ? `<div class="prob">${esc(a.problem)}</div>` : !a.known ? `<div class="prob">${t.unknown}</div>` :
+    `<div class="tiles">${tile(t.fiveS, a.five, a.fiveAt, a.fiveIn, barCls(a.five, th, "five"))}${tile(t.weekS, a.week, a.weekAt, a.weekIn, barCls(a.week, th, "wk"))}</div>`;
+  const exp = a.expAt ? `<div class="exp ${esc(a.expiryLevel)}">${CAL}<span class="d">${esc(a.expAt)}</span>${a.expEst ? `<span class="est">${t.est}</span>` : ""}${a.expIn ? `<span class="l">${esc(a.expIn)}</span>` : ""}</div>` : "";
   const side = a.active ? `<div class="check">${CHECK}</div>` : `<div class="btn" data-switch="${esc(a.uuid)}">${t.sw}</div>`;
   return `<div class="acct ${a.active ? "on" : "click"}" ${a.active ? "" : `data-switch="${esc(a.uuid)}"`}>
-    <div class="av">${STAR}</div>
-    <div class="body"><div class="name"><span class="n">${esc(a.name)}</span><span class="s">· ${a.active ? t.current : t.spare}</span></div>
-      ${a.email ? `<div class="mail">${esc(a.email)}</div>` : ""}${usage}</div>${side}</div>`;
+    <div class="who"><div class="av" style="box-shadow:0 0 0 1.5px ${acol(i)}, inset 0 0.5px 0 rgba(255,255,255,0.3)">${STAR}</div><div class="id">
+      <div class="name"><span class="n">${esc(a.name)}</span><span class="tag">${a.active ? t.current : t.spare}</span></div>
+      ${a.email ? `<div class="mail">${esc(a.email)}</div>` : ""}</div></div>
+    ${usage}${exp}${side}</div>`;
+}
+
+// Each account keeps one colour: in the stacked bar, its legend dot and its avatar ring.
+const ACOL = ["#5FE3F6", "#B794FF", "#FF8FBF", "#7FA8FF", "#6BF7B0", "#FFC27A"];
+const acol = (i) => ACOL[i % ACOL.length];
+
+// total is the weekly limit of all subscribed accounts together under the ring:
+// one bar, each account filling its share in its own colour.
+function total(st, t) {
+  const w = st.total;
+  if (!w || !w.all) return `<div class="sep"></div>`;
+  let bar = "", lg = "";
+  w.segs.forEach((p, i) => {
+    if (w.levels[i] === "none") return;
+    const a = st.accounts[i] || {}, c = acol(i);
+    if (p > 0 && w.known) bar += `<i style="width:${clamp(p) / w.known}%;background:linear-gradient(90deg, ${c}, ${c}cc)"></i>`;
+    lg += `<span><i style="background:${c}"></i>${esc(a.name)} <b>${p < 0 ? "--" : Math.round(p) + "%"}</b></span>`;
+  });
+  const lv = w.known ? barCls(w.used, st.settings.threshold, "") : "";
+  return `<div class="sep"></div><div class="total ${lv}">
+    <div class="tt"><span class="tl">${t.weekTotal}</span><span class="tp">${w.known ? `${Math.round(w.used)}<small>%</small>` : "--"}</span></div>
+    <div class="stack">${bar}</div>
+    <div class="lg">${lg}</div>
+    <div class="tf"><span>${esc(w.left)}</span>${w.next ? `<span>${esc(w.next)}</span>` : ""}</div>
+  </div><div class="sep"></div>`;
 }
 
 function renderMain(st, t) {
@@ -193,19 +279,13 @@ function renderMain(st, t) {
     if (st.countdown) h += `<div class="cd">${esc(st.countdown)}</div>`;
     if (st.resetAt) h += `<div class="at">${esc(st.resetAt)}</div>`;
     h += `</div></div>`;
-    if (st.weekText) {
-      const i = st.weekText.indexOf(" · ");
-      const head = i < 0 ? st.weekText : st.weekText.slice(0, i), tail = i < 0 ? "" : st.weekText.slice(i);
-      h += `<div class="sep"></div><div class="week"><div class="t"><b>${esc(head)}</b>${esc(tail)}</div>
-        <div class="bar ${barCls(st.week, st.settings.threshold, "")}"><i style="width:${clamp(st.week)}%"></i></div></div>`;
-    }
-    h += `<div class="sep"></div>`;
+    h += total(st, t);
   } else {
-    h += `<div class="top" style="justify-content:center;padding:18px 0">${ring(st, t)}</div><div class="sep"></div>`;
+    h += `<div class="top" style="justify-content:center;padding:18px 0">${ring(st, t)}</div>` + total(st, t);
   }
   if (st.accounts && st.accounts.length) {
     h += `<div class="h">${t.accounts}</div>`;
-    for (const a of st.accounts) h += account(a, st, t);
+    st.accounts.forEach((a, i) => { h += account(a, st, t, i); });
   }
   if (st.status) h += `<div class="pill status">${esc(st.status)}</div>`;
   if (st.update) h += `<div class="pill upd" data-cmd="update">${esc(t.update.replace("{v}", st.update))}</div>`;

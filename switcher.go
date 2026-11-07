@@ -23,6 +23,23 @@ type Account struct {
 	Plan    string `json:"plan"`
 	Usage   *Usage `json:"usage,omitempty"`
 	Problem string `json:"problem,omitempty"`
+	// SubSince is when the paid subscription started, from the profile.
+	SubSince time.Time `json:"subSince,omitempty"`
+	Billing  string    `json:"billing,omitempty"`
+	// ExpiresAt is an exact end date set by hand in state.json; it wins
+	// over the monthly estimate from SubSince.
+	ExpiresAt time.Time `json:"expiresAt,omitempty"`
+	ProfileAt time.Time `json:"profileAt,omitempty"`
+}
+
+// applyProfile copies what the profile says about the account and its plan.
+func (a *Account) applyProfile(p profile, now time.Time) {
+	if p.plan() != "" {
+		a.Plan = p.plan()
+	}
+	a.SubSince, _ = time.Parse(time.RFC3339Nano, p.Organization.SubSince)
+	a.Billing = p.Organization.BillingType
+	a.ProfileAt = now
 }
 
 func (a *Account) label() string {
@@ -232,7 +249,13 @@ func (s *switcher) refresh(ctx context.Context) {
 		token, err := s.tokenFor(j.uuid, active)
 		var p profile
 		var u *Usage
-		if err == nil && j.new {
+		s.mu.Lock()
+		wantProfile := j.new
+		if a := s.account(j.uuid); a != nil && now.Sub(a.ProfileAt) >= profileEvery {
+			wantProfile = true
+		}
+		s.mu.Unlock()
+		if err == nil && wantProfile {
 			p, err = fetchProfile(ctx, token)
 		}
 		if err == nil {
@@ -262,6 +285,9 @@ func (s *switcher) refresh(ctx context.Context) {
 		if a != nil {
 			switch {
 			case err == nil:
+				if wantProfile {
+					a.applyProfile(p, now)
+				}
 				a.Usage, a.Problem = u, ""
 			case errors.Is(err, errSignedOut):
 				a.Problem = "signed out, add it again"

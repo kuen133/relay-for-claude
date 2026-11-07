@@ -19,6 +19,7 @@ type panelState struct {
 	ResetAt    string         `json:"resetAt"`
 	Week       float64        `json:"week"`
 	WeekText   string         `json:"weekText"`
+	Total      weekTotal      `json:"total"`
 	Accounts   []panelAccount `json:"accounts"`
 	Next       string         `json:"next"`
 	NextDetail string         `json:"nextDetail"`
@@ -39,6 +40,17 @@ type panelAccount struct {
 	Known   bool    `json:"known"`
 	Problem string  `json:"problem"`
 	Level   string  `json:"level"`
+	// FiveAt/FiveIn say when the five-hour window resets and how long that
+	// is from now; WeekAt/WeekIn the same for the weekly limit.
+	FiveAt string `json:"fiveAt"`
+	FiveIn string `json:"fiveIn"`
+	WeekAt string `json:"weekAt"`
+	WeekIn string `json:"weekIn"`
+	// ExpAt/ExpIn say when the paid month ends; ExpEst marks an estimate.
+	ExpAt       string `json:"expAt"`
+	ExpIn       string `json:"expIn"`
+	ExpEst      bool   `json:"expEst"`
+	ExpiryLevel string `json:"expiryLevel"`
 }
 
 type panelSettings struct {
@@ -104,10 +116,13 @@ func buildPanelState(snap snapshot, autostart bool, now time.Time) panelState {
 	for i := range snap.Accounts {
 		a := &snap.Accounts[i]
 		pa := panelAccount{UUID: a.UUID, Name: a.shortName(), Email: a.Email, Active: a.UUID == snap.Active,
-			Problem: translate(snap.Language, a.Problem), Level: "unknown"}
+			Problem: translate(snap.Language, a.Problem), Level: "unknown", ExpiryLevel: expiryLevel(a, now)}
+		pa.ExpAt, pa.ExpIn, pa.ExpEst = expiryParts(zh, a, now)
 		if a.Usage != nil {
 			u := a.Usage.current(now)
 			pa.Five, pa.Week, pa.Known = u.Session, u.Weekly, true
+			pa.FiveAt, pa.FiveIn = resetParts(zh, u.SessionReset, now, tr("Not started", "窗口未开始"))
+			pa.WeekAt, pa.WeekIn = resetParts(zh, u.WeeklyReset, now, tr("Not started", "未开始"))
 			pa.Level = level(u.peak(), snap.Threshold)
 		}
 		if pa.Active {
@@ -115,6 +130,7 @@ func buildPanelState(snap snapshot, autostart bool, now time.Time) panelState {
 		}
 		st.Accounts = append(st.Accounts, pa)
 	}
+	st.Total = buildWeekTotal(snap, now)
 	if cur == nil {
 		return st
 	}
@@ -129,13 +145,13 @@ func buildPanelState(snap snapshot, autostart bool, now time.Time) panelState {
 	st.Left = fmt.Sprintf(tr("%.0f%% left", "剩余 %.0f%%"), math.Max(100-u.Session, 0))
 	if !u.SessionReset.IsZero() && u.SessionReset.After(now) {
 		st.Countdown = fmt.Sprintf(tr("Resets in %s", "%s后重置"), durationText(zh, u.SessionReset.Sub(now)))
-		st.ResetAt = fmt.Sprintf(tr("Resets at %s", "%s 重置"), localizedReset(snap.Language, u.SessionReset, now))
+		st.ResetAt = fmt.Sprintf(tr("Resets %s", "%s 重置"), whenText(zh, u.SessionReset, now))
 	} else {
 		st.Countdown = tr("Window not started", "五小时窗口未开始")
 	}
 	st.WeekText = fmt.Sprintf(tr("Weekly %.0f%%", "本周额度 %.0f%%"), u.Weekly)
 	if !u.WeeklyReset.IsZero() && u.WeeklyReset.After(now) {
-		st.WeekText += fmt.Sprintf(tr(" · resets %s", " · %s 重置"), localizedReset(snap.Language, u.WeeklyReset, now))
+		st.WeekText += fmt.Sprintf(tr(" · resets %s · in %s", " · %s 重置 · 还有 %s"), whenText(zh, u.WeeklyReset, now), daysText(zh, u.WeeklyReset.Sub(now)))
 	}
 	st.NextDetail = nextText(snap, cur, now, tr)
 	st.Next = shortNext(st.NextDetail)

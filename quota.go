@@ -97,6 +97,17 @@ func nextText(snap snapshot, cur *Account, now time.Time, tr func(string, string
 		at, best.label(), b.Session, b.Weekly)
 }
 
+// fiveResetText says when an account's five-hour window resets and how long
+// that is from now, e.g. "五小时 13:09 重置 · 还有 2 小时 35 分".
+func fiveResetText(lang string, u Usage, now time.Time) string {
+	zh := lang == "zh-CN"
+	if u.SessionReset.IsZero() || !u.SessionReset.After(now) {
+		return tr2(zh, "5-hour window not started", "五小时窗口未开始")
+	}
+	return fmt.Sprintf(tr2(zh, "5h resets %s · in %s", "五小时 %s 重置 · 还有 %s"),
+		localizedReset(lang, u.SessionReset, now), durationText(zh, u.SessionReset.Sub(now)))
+}
+
 // shortName is an account's alias or name without the plan, for the cards.
 func (a *Account) shortName() string {
 	switch {
